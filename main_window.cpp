@@ -25,6 +25,8 @@ MainWindow::MainWindow()
     : QMainWindow()
 {
 	setupUi(this);
+	cancelButton->hide();
+	progressBar->hide();
 
 	setFixedHeight(sizeHint().height());
 }
@@ -37,7 +39,7 @@ void MainWindow::on_calculateButton_clicked()
 	file.open(QIODevice::ReadOnly);
 
 	const int block_size = (file.size() > 1024*1024) ? 10*1024 : 1024;
-	char buffer[block_size];
+	char buffer[10*1024]; // allocate enough space for both cases so msvc will be happy
 	int bytes_read;
 
 	int progress_max = file.size()/block_size;
@@ -48,16 +50,31 @@ void MainWindow::on_calculateButton_clicked()
 	QCryptographicHash::Algorithm hash_alg = static_cast<QCryptographicHash::Algorithm>(hashSelector->currentIndex());
 	QCryptographicHash hash(hash_alg);
 
-	while( (bytes_read = file.read(buffer, block_size))>0) {
+	cancel_calculation = false;
+
+	while( (!cancel_calculation && (bytes_read = file.read(buffer, block_size))>0) ) {
 		hash.addData(buffer, bytes_read);
 		progressBar->setValue(progressBar->value()+1);
+		QCoreApplication::processEvents();
 	}
 	
-	// prevents progressBar from stopping on 99%;
-	progressBar->setValue(progressBar->maximum());
+	progressBar->hide();
 
-	checksumEdit->setText(hash.result().toHex());
+	if (!cancel_calculation) {
+		checksumEdit->setText(hash.result().toHex());
+	}
+
+	progressBar->hide();
+	checksumEdit->show();
+	
+	cancelButton->hide();
+	calculateButton->show();
 	file.close();
+}
+
+void MainWindow::on_cancelButton_clicked()
+{
+	cancel_calculation = true;
 }
 
 void MainWindow::on_fileEdit_textChanged(const QString &text)
@@ -76,6 +93,11 @@ void MainWindow::on_browseButton_clicked()
 	if(!filename.isEmpty()) {
 		fileEdit->setText(filename);
 	}
+	QFileInfo f_info(filename);
+	if(f_info.isFile()) {
+		calculateButton->click();
+	}
+
 }
 
 void MainWindow::on_copyButton_clicked()

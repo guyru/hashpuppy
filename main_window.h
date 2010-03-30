@@ -36,9 +36,13 @@ protected:
 
 private slots:
 	void on_calculateButton_clicked();
+	void on_cancelButton_clicked();
 	void on_fileEdit_textChanged(const QString &text);
 	void on_browseButton_clicked();
 	void on_copyButton_clicked();
+
+private:
+	bool cancel_calculation;
 };
 
 #endif
